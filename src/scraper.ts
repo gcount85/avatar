@@ -2,6 +2,10 @@ import { chromium, Browser, Page } from "playwright";
 import { Screening } from "./types";
 import { createTestSchedule } from "./test-mode";
 
+/**
+ * IMAX 공식 사이트 (https://www.imax.com/ko/kr/theatre/cgv-yongsan-i-park-mall-imax)
+ * 에서 CGV 용산 아이파크몰 IMAX의 상영 시간표를 스크래핑합니다.
+ */
 export class ImaxScraper {
   private browser: Browser | null = null;
   private page: Page | null = null;
@@ -13,9 +17,10 @@ export class ImaxScraper {
     });
     this.page = await this.browser.newPage();
 
-    // 한국어 설정
     await this.page.setExtraHTTPHeaders({
       "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
     });
   }
 
@@ -25,7 +30,6 @@ export class ImaxScraper {
   ): Promise<Screening[]> {
     if (!this.page) throw new Error("Scraper not initialized");
 
-    // 테스트 모드 체크
     if (process.env.TEST_MODE === "true") {
       console.log("🧪 Running in test mode - generating mock data");
       return createTestSchedule(targetMovie, targetDate);
@@ -34,121 +38,182 @@ export class ImaxScraper {
     const screenings: Screening[] = [];
 
     try {
-      // 여러 가능한 URL 시도
-      const urls = [
-        "https://www.imax.com/ko/kr/theatre/cgv-yongsan-i-park-mall-imax",
-        "https://www.cgv.co.kr/theaters/?areacode=01&theaterCode=0013",
-        "https://www.cgv.co.kr/theaters/special/show-times.aspx?regioncode=07&theatercode=0013",
-      ];
+      const url =
+        "https://www.imax.com/ko/kr/theatre/cgv-yongsan-i-park-mall-imax";
+      console.log(`🔍 IMAX 공식 사이트에서 스크래핑: ${url}`);
 
-      let pageLoaded = false;
+      await this.page.goto(url, {
+        waitUntil: "networkidle",
+        timeout: 30000,
+      });
 
-      for (const url of urls) {
+      console.log("✅ 페이지 로드 완료");
+      await this.page.waitForTimeout(5000);
+
+      // 현재 선택된 날짜 확인
+      const currentDateText = await this.page
+        .locator("input[readonly][value*='월']")
+        .first()
+        .inputValue()
+        .catch(() => "");
+
+      console.log(`📅 현재 선택된 날짜: ${currentDateText}`);
+
+      // 예매 가능한 날짜 버튼 찾기
+      const dateButtons = await this.page
+        .locator("button.MuiPickersDay-root:not(.Mui-disabled)")
+        .all();
+
+      console.log(`📅 예매 가능한 날짜: ${dateButtons.length}개`);
+
+      // 각 날짜별로 상영 시간표 수집
+      for (let i = 0; i < dateButtons.length; i++) {
         try {
-          console.log(`Trying URL: ${url}`);
-          await this.page.goto(url, {
-            waitUntil: "domcontentloaded",
-            timeout: 15000,
-          });
+          const dateButton = dateButtons[i];
+          const dayNumber = await dateButton.textContent();
+          const timestamp = await dateButton.getAttribute("data-timestamp");
 
-          // 페이지 로딩 대기
+          if (!dayNumber || !timestamp) continue;
+
+          // 날짜 클릭
+          await dateButton.click();
           await this.page.waitForTimeout(2000);
 
-          pageLoaded = true;
-          console.log(`Successfully loaded: ${url}`);
-          break;
-        } catch (error) {
-          console.log(`Failed to load ${url}:`, (error as Error).message);
-          continue;
-        }
-      }
+          // 날짜 변환
+          const date = new Date(parseInt(timestamp));
+          const dateStr = date.toISOString().split("T")[0];
 
-      if (!pageLoaded) {
-        // 모든 URL이 실패한 경우 더미 데이터로 테스트
-        console.log("All URLs failed, creating test data for demonstration");
+          console.log(`\n📅 ${dateStr} (${dayNumber.trim()}일) 처리 중...`);
 
-        // 현재 날짜가 타겟 날짜와 같으면 테스트 스케줄 생성
-        const today = new Date().toISOString().split("T")[0];
-        if (targetDate === today || targetDate === "2025-01-20") {
-          screenings.push({
-            movieTitle: targetMovie,
-            theater: "CGV 용산 아이파크몰 IMAX",
-            date: targetDate,
-            time: "19:30",
-            datetime: `${targetDate}T19:30:00+09:00`,
-            status: "available",
-            screenType: "IMAX",
-            bookingUrl: "https://www.cgv.co.kr",
-          });
-        }
+          // 상영 시간 추출
+          const showtimeTexts = await this.page
+            .locator(".showtime-tabs_time__McuGP")
+            .allTextContents();
 
-        return screenings;
-      }
+          console.log(`  발견된 상영 시간: ${showtimeTexts.length}개`);
 
-      // 페이지 스크린샷 저장 (디버깅용)
-      await this.page.screenshot({ path: "debug-page.png", fullPage: true });
+          // 영화 포맷 추출
+          const screenType =
+            (await this.page
+              .locator(".movie-variant-label_movieVariantLabel__zacJr")
+              .first()
+              .textContent()
+              .catch(() => null)) || "IMAX";
 
-      // 페이지 제목과 URL 확인
-      const title = await this.page.title();
-      const currentUrl = this.page.url();
-      console.log(`Page title: ${title}`);
-      console.log(`Current URL: ${currentUrl}`);
+          // 각 시간대별 Screening 객체 생성
+          for (const timeText of showtimeTexts) {
+            const time24 = this.convertTo24Hour(timeText.trim());
 
-      // 영화 관련 텍스트 찾기
-      const pageText = await this.page.textContent("body");
-      console.log(
-        "Page contains Avatar:",
-        pageText?.includes("Avatar") || pageText?.includes("아바타")
-      );
+            const screening: Screening = {
+              movieTitle: targetMovie,
+              theater: "CGV 용산 아이파크몰 IMAX",
+              date: dateStr,
+              time: time24,
+              datetime: `${dateStr}T${time24}:00+09:00`,
+              status: "available",
+              screenType: screenType.trim(),
+            };
 
-      // 다양한 선택자로 스케줄 정보 찾기
-      const scheduleSelectors = [
-        '[class*="schedule"]',
-        '[class*="showtime"]',
-        '[class*="time"]',
-        "[data-date]",
-        ".movie-schedule",
-        ".showtime-list",
-        ".screening-time",
-        ".timetable",
-        ".movie-info",
-        '[class*="movie"]',
-      ];
-
-      for (const selector of scheduleSelectors) {
-        try {
-          const elements = await this.page.$$(selector);
-          if (elements.length > 0) {
-            console.log(
-              `Found ${elements.length} elements with selector: ${selector}`
-            );
-
-            for (let i = 0; i < Math.min(elements.length, 5); i++) {
-              const text = await elements[i].textContent();
-              console.log(`Element ${i} text: ${text?.substring(0, 100)}...`);
-            }
+            screenings.push(screening);
+            console.log(`  ✅ ${time24} - ${screenType}`);
           }
         } catch (error) {
-          // 선택자가 유효하지 않을 수 있음
+          const errorMsg =
+            error instanceof Error ? error.message : String(error);
+          console.error(
+            `  ❌ 날짜 처리 실패: ${errorMsg.substring(0, 50)}`
+          );
         }
       }
 
-      // 실제 파싱 로직은 사이트 구조 분석 후 구현
-      // 현재는 테스트용 데이터 반환
+      // 스크린샷 저장
+      await this.page.screenshot({ path: "debug-page.png", fullPage: true });
+      console.log("\n📸 스크린샷 저장: debug-page.png");
+
       console.log(
-        "Schedule scraping completed. Found screenings:",
-        screenings.length
+        `\n✅ 스크래핑 완료. 총 ${screenings.length}개 상영 시간표 발견`
       );
 
       return screenings;
     } catch (error) {
-      console.error("Error scraping schedule:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`❌ 스크래핑 실패: ${errorMessage}`);
+
+      try {
+        await this.page.screenshot({ path: "debug-page.png", fullPage: true });
+      } catch (e) {
+        // 스크린샷 저장 실패는 무시
+      }
+
       throw error;
     }
   }
 
+  /**
+   * 한국어 시간 형식을 24시간 형식으로 변환
+   * "오후 4:30" -> "16:30"
+   */
+  private convertTo24Hour(koreanTime: string): string {
+    const match = koreanTime.match(/(오전|오후)\s*(\d{1,2}):(\d{2})/);
+    if (!match) return "00:00";
+
+    const [, period, hourStr, minute] = match;
+    let hour = parseInt(hourStr);
+
+    if (period === "오후" && hour !== 12) {
+      hour += 12;
+    } else if (period === "오전" && hour === 12) {
+      hour = 0;
+    }
+
+    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  }
+
+  async testScraping(): Promise<void> {
+    try {
+      await this.init();
+      console.log("Testing scraping functionality...");
+      const screenings = await this.scrapeSchedule(
+        "Avatar: Fire and Ash",
+        new Date().toISOString().split("T")[0]
+      );
+
+      console.log(`\n📊 테스트 결과:`);
+      console.log(`총 ${screenings.length}개의 상영 스케줄을 찾았습니다.\n`);
+
+      const byDate = new Map<string, Screening[]>();
+      for (const screening of screenings) {
+        const dateScreenings = byDate.get(screening.date) || [];
+        dateScreenings.push(screening);
+        byDate.set(screening.date, dateScreenings);
+      }
+
+      const sortedDates = Array.from(byDate.keys()).sort();
+      for (const date of sortedDates) {
+        const dateScreenings = byDate.get(date)!;
+        console.log(`\n📅 ${date}`);
+        for (const screening of dateScreenings) {
+          console.log(
+            `  🎬 ${screening.time} - ${screening.screenType} (${screening.status})`
+          );
+        }
+      }
+    } finally {
+      await this.close();
+    }
+  }
+
+  async testNotification(): Promise<void> {
+    console.log("Testing Slack notification...");
+    // 이 메서드는 SlackNotifier에서 구현됨
+  }
+
   async close(): Promise<void> {
-    if (this.page) await this.page.close();
-    if (this.browser) await this.browser.close();
+    if (this.browser) {
+      await this.browser.close();
+      this.browser = null;
+      this.page = null;
+    }
   }
 }
