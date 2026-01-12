@@ -25,6 +25,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install chromium
 
+      - name: Restore database cache
+        uses: actions/cache/restore@v4
+        with:
+          path: screenings.db
+          key: screenings-db-${{ github.run_id }}
+          restore-keys: |
+            screenings-db-
+
       - name: Build project
         run: npm run build
 
@@ -37,6 +45,13 @@ jobs:
           # 실제 운영 환경에서는 false로 설정
           TEST_MODE: "false"
         run: npm run start check-once
+
+      - name: Save database cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: screenings.db
+          key: screenings-db-${{ github.run_id }}
 
       - name: Upload debug artifacts
         if: failure()
