@@ -4,12 +4,13 @@ CGV 용산 아이파크몰 IMAX에서 "Avatar: Fire and Ash" 영화의 스케줄
 
 ## 기능
 
-- 🎬 IMAX 사이트에서 특정 영화의 상영 스케줄 자동 모니터링
-- 📅 **모든 날짜**의 새로운 스케줄 및 시간대 변경사항 감지
+- 🎬 **IMAX 공식 사이트**에서 실시간 상영 스케줄 자동 스크래핑
+- 📅 **1월 12일~19일** 전체 상영 시간표 모니터링 (약 29개 상영)
 - 🔔 Slack 웹훅을 통한 실시간 알림
 - 🔄 상영 상태 변경 감지 (예매 가능 → 매진 등)
-- 🚫 중복 알림 방지
-- 📊 SQLite 기반 데이터 저장
+- 🚫 중복 알림 방지 (이미 알린 상영은 재알림 안 함)
+- 📊 SQLite 기반 스냅샷 저장 및 Diff 감지
+- 💾 GitHub Actions 캐시로 실행 간 데이터 유지
 
 ## 설치 및 설정
 
@@ -28,12 +29,16 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 TARGET_MOVIE="Avatar: Fire and Ash"
 TARGET_DATE=2026-01-20
 CHECK_INTERVAL_MINUTES=2
-TEST_MODE=true
-# TARGET_DATE는 주요 관심 날짜이며, 실제로는 모든 날짜의 스케줄을 모니터링합니다
-# TEST_MODE=true로 설정하면 실제 사이트 대신 테스트 데이터를 사용합니다
+TEST_MODE=false
+# TARGET_DATE는 주요 관심 날짜이며, 실제로는 예매 가능한 모든 날짜를 모니터링합니다
+# TEST_MODE=true: 실제 스크래핑 대신 더미 데이터 사용 (개발/테스트용)
+# TEST_MODE=false: IMAX 공식 사이트에서 실시간 스크래핑 (운영용)
 ```
 
-**중요**: `TARGET_DATE`는 이제 주요 관심 날짜를 나타내며, 실제로는 **모든 날짜**의 스케줄 변경사항을 모니터링합니다.
+**작동 방식**:
+- IMAX 공식 사이트 (https://www.imax.com/ko/kr/theatre/cgv-yongsan-i-park-mall-imax)에서 실시간 스크래핑
+- 현재 예매 가능한 모든 날짜의 상영 시간표를 가져옴 (2026년 1월 12일~19일)
+- 이전 스냅샷과 비교하여 **새로 추가된 상영**이나 **상태 변경**만 알림
 
 ### 3. Playwright 브라우저 설치
 
@@ -63,19 +68,29 @@ npm run start
 1. GitHub 저장소의 Settings > Secrets and variables > Actions에서 다음 시크릿 추가:
    - `SLACK_WEBHOOK_URL`: Slack 웹훅 URL
 
-2. 워크플로우가 매 15분마다 자동 실행됩니다.
+2. 워크플로우가 **매 15분마다** 자동 실행됩니다.
+
+3. **데이터 유지**: GitHub Actions 캐시를 사용하여 `screenings.db`를 실행 간 유지
+   - 이전 스냅샷과 비교하여 변경사항만 알림
+   - 커밋 히스토리를 오염시키지 않음
+   - 캐시는 7일간 유지되며 자동 갱신됨
 
 ## 프로젝트 구조
 
 ```
 src/
-├── types.ts        # 타입 정의
-├── database.ts     # SQLite 데이터베이스 관리
-├── scraper.ts      # IMAX 사이트 스크래핑
-├── slack.ts        # Slack 알림 전송
-├── diff.ts         # 스케줄 변경 감지
+├── types.ts        # 타입 정의 (Screening, ScreeningSnapshot 등)
+├── database.ts     # SQLite 데이터베이스 관리 (snapshots, notifications)
+├── scraper.ts      # IMAX 공식 사이트 스크래핑 (Playwright 사용)
+├── slack.ts        # Slack 알림 전송 (웹훅)
+├── diff.ts         # 스케줄 변경 감지 (added, statusChanged)
 ├── monitor.ts      # 메인 모니터링 로직
+├── test-mode.ts    # 테스트용 더미 데이터
 └── index.ts        # 진입점
+
+screenings.db       # SQLite 데이터베이스 (스냅샷 및 알림 기록)
+.github/workflows/
+└── monitor.yml     # GitHub Actions 워크플로우 (15분마다 실행)
 ```
 
 ## 알림 예시
@@ -95,13 +110,27 @@ src/
 감지 시각: 2026-01-12 14:30:00
 ```
 
-**주요 변경사항**: 이제 1월 20일뿐만 아니라 **모든 날짜**의 새로운 스케줄이나 시간대 변경사항을 감지하여 알림을 보냅니다.
+**알림 조건**:
+- 처음 발견된 상영 시간 (new_screening)
+- 예매 상태 변경 (status_change: 예매 가능 ↔ 매진)
+- 동일한 상영에 대해서는 한 번만 알림 (중복 방지)
+
+**모니터링 범위**: 2026년 1월 12일~19일의 모든 상영 시간 (약 29개)
+
+## 기술 스택
+
+- **스크래핑**: Playwright (Chromium 브라우저 자동화)
+- **데이터베이스**: better-sqlite3 (로컬 SQLite)
+- **알림**: Slack Webhook API
+- **스케줄링**: GitHub Actions (cron)
+- **언어**: TypeScript, Node.js
 
 ## 주의사항
 
-- 사이트 구조 변경 시 스크래핑 로직 수정이 필요할 수 있습니다
-- 과도한 요청으로 인한 차단을 방지하기 위해 적절한 간격을 유지하세요
-- GitHub Actions의 무료 사용량 제한을 고려하세요
+- IMAX 공식 사이트 DOM 구조 변경 시 스크래핑 로직 수정 필요
+- GitHub Actions 무료 플랜: 월 2,000분 제한 (15분 간격 = 월 약 100분 사용)
+- 과도한 스크래핑 방지를 위해 최소 15분 간격 권장
+- screenings.db는 로컬에서만 생성되며, GitHub에는 커밋되지 않음 (.gitignore)
 
 ## 문제 해결
 
