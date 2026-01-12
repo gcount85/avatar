@@ -1,8 +1,8 @@
 import Database from "better-sqlite3";
-import { Screening, ScreeningSnapshot } from "./types";
+import { ScreeningSnapshot } from "./types";
 
 export class ScreeningDatabase {
-  private db: Database.Database;
+  private readonly db: Database.Database;
 
   constructor(dbPath: string = "screenings.db") {
     this.db = new Database(dbPath);

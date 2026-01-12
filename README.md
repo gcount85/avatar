@@ -1,6 +1,6 @@
 # IMAX Schedule Monitor
 
-CGV 용산 아이파크몰 IMAX에서 "Avatar: Fire and Ash" 영화의 1월 20일 스케줄을 모니터링하고 Slack으로 알림을 보내는 시스템입니다.
+CGV 용산 아이파크몰 IMAX에서 "Avatar: Fire and Ash" 영화의 스케줄을 모니터링하고 Slack으로 알림을 보내는 시스템입니다.
 
 ## 기능
 
@@ -25,11 +25,12 @@ npm install
 
 ```env
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-TARGET_MOVIE=Avatar: Fire and Ash
-TARGET_DATE=2025-01-20
+TARGET_MOVIE="Avatar: Fire and Ash"
+TARGET_DATE=2026-01-20
 CHECK_INTERVAL_MINUTES=2
 TEST_MODE=true
 # TARGET_DATE는 주요 관심 날짜이며, 실제로는 모든 날짜의 스케줄을 모니터링합니다
+# TEST_MODE=true로 설정하면 실제 사이트 대신 테스트 데이터를 사용합니다
 ```
 
 **중요**: `TARGET_DATE`는 이제 주요 관심 날짜를 나타내며, 실제로는 **모든 날짜**의 스케줄 변경사항을 모니터링합니다.
@@ -48,10 +49,10 @@ npx playwright install chromium
 # 빌드
 npm run build
 
-# 테스트 실행들
-npm run start test-scraping      # 스크래핑 테스트
-npm run start test-notification  # Slack 알림 테스트
-npm run start check-once         # 한 번만 체크
+# 테스트 실행
+npm run test:scraping      # 스크래핑 테스트
+npm run test:notification  # Slack 알림 테스트
+npm run check              # 한 번만 체크
 
 # 지속적 모니터링 시작
 npm run start
@@ -62,7 +63,7 @@ npm run start
 1. GitHub 저장소의 Settings > Secrets and variables > Actions에서 다음 시크릿 추가:
    - `SLACK_WEBHOOK_URL`: Slack 웹훅 URL
 
-2. 워크플로우가 매 2분마다 자동 실행됩니다.
+2. 워크플로우가 매 15분마다 자동 실행됩니다.
 
 ## 프로젝트 구조
 
@@ -86,12 +87,12 @@ src/
 
 영화: Avatar: Fire and Ash
 극장: CGV 용산 아이파크몰 IMAX  
-📅 상영일: 2025-01-20
+📅 상영일: 2026-01-20
 🕐 상영시간: 19:30
 상태: ✅ 예매 가능
 예매 링크: https://www.cgv.co.kr/ticket/...
 
-감지 시각: 2025-01-12 14:30:00
+감지 시각: 2026-01-12 14:30:00
 ```
 
 **주요 변경사항**: 이제 1월 20일뿐만 아니라 **모든 날짜**의 새로운 스케줄이나 시간대 변경사항을 감지하여 알림을 보냅니다.
@@ -113,7 +114,7 @@ src/
 ### Slack 알림이 오지 않는 경우
 
 1. 웹훅 URL이 올바른지 확인
-2. `test-notification` 명령으로 테스트
+2. `npm run test:notification` 명령으로 테스트
 3. Slack 채널 권한 확인
 
 ## 라이선스
