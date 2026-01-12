@@ -1,0 +1,45 @@
+name: IMAX Schedule Monitor
+
+on:
+  schedule:
+    # 매 2분마다 실행 (UTC 기준)
+    - cron: "*/2 * * * *"
+  workflow_dispatch: # 수동 실행 가능
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run schedule check
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TARGET_MOVIE: "Avatar: Fire and Ash"
+          TARGET_DATE: "2025-01-20"
+        run: npm run start check-once
+
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshots
+          path: "*.png"
+          retention-days: 1
