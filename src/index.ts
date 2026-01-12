@@ -6,8 +6,8 @@ import { ScheduleMonitor } from "./monitor";
 dotenv.config();
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 const TARGET_MOVIE = process.env.TARGET_MOVIE || "Avatar: Fire and Ash";
-const TARGET_DATE = process.env.TARGET_DATE || "2025-01-20";
-const CHECK_INTERVAL_MINUTES = parseInt(
+const TARGET_DATE = process.env.TARGET_DATE || "2025-01-20"; // 주요 관심 날짜 (실제로는 모든 날짜 모니터링)
+const CHECK_INTERVAL_MINUTES = Number.parseInt(
   process.env.CHECK_INTERVAL_MINUTES || "2"
 );
 
@@ -50,7 +50,7 @@ async function main() {
     case "start":
     default:
       console.log(
-        `Starting schedule monitor for "${TARGET_MOVIE}" on ${TARGET_DATE}`
+        `Starting schedule monitor for "${TARGET_MOVIE}" (all dates monitored, primary focus: ${TARGET_DATE})`
       );
       console.log(`Check interval: ${CHECK_INTERVAL_MINUTES} minutes`);
       console.log("Press Ctrl+C to stop");

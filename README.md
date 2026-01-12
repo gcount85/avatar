@@ -26,10 +26,13 @@ npm install
 ```env
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 TARGET_MOVIE=Avatar: Fire and Ash
-TARGET_DATE=2025-01-20  # 주요 타겟 날짜 (모든 날짜 모니터링됨)
+TARGET_DATE=2025-01-20
 CHECK_INTERVAL_MINUTES=2
 TEST_MODE=true
+# TARGET_DATE는 주요 관심 날짜이며, 실제로는 모든 날짜의 스케줄을 모니터링합니다
 ```
+
+**중요**: `TARGET_DATE`는 이제 주요 관심 날짜를 나타내며, 실제로는 **모든 날짜**의 스케줄 변경사항을 모니터링합니다.
 
 ### 3. Playwright 브라우저 설치
 

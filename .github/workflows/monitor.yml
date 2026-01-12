@@ -2,8 +2,8 @@ name: IMAX Schedule Monitor
 
 on:
   schedule:
-    # 매 2분마다 실행 (UTC 기준)
-    - cron: "*/2 * * * *"
+    # 매 15분마다 실행 (GitHub Actions 최소 간격)
+    - cron: "*/15 * * * *"
   workflow_dispatch: # 수동 실행 가능
 
 jobs:
@@ -33,7 +33,10 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           TARGET_MOVIE: "Avatar: Fire and Ash"
+          # TARGET_DATE는 주요 관심 날짜이며, 실제로는 모든 날짜 모니터링
           TARGET_DATE: "2025-01-20"
+          # 실제 운영 환경에서는 false로 설정
+          TEST_MODE: "false"
         run: npm run start check-once
 
       - name: Upload debug artifacts

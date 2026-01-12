@@ -1,13 +1,13 @@
 import { Screening } from "./types";
-import * as fs from "fs";
+import * as fs from "node:fs";
 
 const CALL_COUNT_FILE = "test-call-count.txt";
 
 function getCallCount(): number {
   try {
     if (fs.existsSync(CALL_COUNT_FILE)) {
-      const count = parseInt(fs.readFileSync(CALL_COUNT_FILE, "utf8"));
-      return isNaN(count) ? 0 : count;
+      const count = Number.parseInt(fs.readFileSync(CALL_COUNT_FILE, "utf8"));
+      return Number.isNaN(count) ? 0 : count;
     }
   } catch (error) {
     console.log("Error reading call count:", error);

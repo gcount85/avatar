@@ -81,15 +81,17 @@ npm run start check-once
 ```env
 SLACK_WEBHOOK_URL=your_webhook_url
 TARGET_MOVIE=Avatar: Fire and Ash
-TARGET_DATE=2025-01-20  # 주요 타겟 날짜 (모든 날짜 모니터링됨)
+TARGET_DATE=2025-01-20
 CHECK_INTERVAL_MINUTES=2
-TEST_MODE=true  # false로 변경하면 실제 사이트 스크래핑
+TEST_MODE=true
+# TARGET_DATE는 주요 관심 날짜이며, 실제로는 모든 날짜의 스케줄을 모니터링합니다
 ```
+
+**중요**: `TARGET_DATE`는 이제 주요 관심 날짜를 나타내며, 실제로는 **모든 날짜**의 스케줄 변경사항을 모니터링합니다.
 
 ### 모니터링 간격 변경
 - `.github/workflows/monitor.yml`에서 cron 표현식 수정
-- 현재: `*/2 * * * *` (매 2분)
-- 예시: `*/5 * * * *` (매 5분)
+- 예시: `*/15 * * * *` (매 15분)
 
 ## 🛠 실제 운영 시 고려사항
 

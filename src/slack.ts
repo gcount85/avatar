@@ -1,7 +1,7 @@
 import { NotificationEvent } from "./types";
 
 export class SlackNotifier {
-  private webhookUrl: string;
+  private readonly webhookUrl: string;
 
   constructor(webhookUrl: string) {
     this.webhookUrl = webhookUrl;

@@ -10,11 +10,11 @@ import {
 } from "./types";
 
 export class ScheduleMonitor {
-  private scraper: ImaxScraper;
-  private database: ScreeningDatabase;
-  private notifier: SlackNotifier;
-  private targetMovie: string;
-  private targetDate: string;
+  private readonly scraper: ImaxScraper;
+  private readonly database: ScreeningDatabase;
+  private readonly notifier: SlackNotifier;
+  private readonly targetMovie: string;
+  private readonly targetDate: string;
 
   constructor(webhookUrl: string, targetMovie: string, targetDate: string) {
     this.scraper = new ImaxScraper();
@@ -32,7 +32,7 @@ export class ScheduleMonitor {
   async checkSchedule(): Promise<void> {
     try {
       console.log(
-        `Checking schedule for "${this.targetMovie}" on ${this.targetDate}`
+        `Checking schedule for "${this.targetMovie}" (monitoring all dates, primary focus: ${this.targetDate})`
       );
 
       // 현재 스케줄 스크래핑
