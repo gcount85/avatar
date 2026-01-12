@@ -43,12 +43,12 @@ export class ImaxScraper {
       console.log(`🔍 IMAX 공식 사이트에서 스크래핑: ${url}`);
 
       await this.page.goto(url, {
-        waitUntil: "networkidle",
-        timeout: 30000,
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
       });
 
       console.log("✅ 페이지 로드 완료");
-      await this.page.waitForTimeout(5000);
+      await this.page.waitForTimeout(8000);
 
       // 현재 선택된 날짜 확인
       const currentDateText = await this.page
