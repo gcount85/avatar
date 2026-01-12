@@ -44,7 +44,9 @@ export class ImaxOfficialScraper {
 
       // 캘린더가 로드될 때까지 대기
       try {
-        await this.page.waitForSelector(".showdate-calendar", { timeout: 10000 });
+        await this.page.waitForSelector(".showdate-calendar", {
+          timeout: 10000,
+        });
         console.log("✅ 캘린더 발견");
       } catch (e) {
         console.log("⚠️ 캘린더를 찾을 수 없음");
@@ -59,9 +61,9 @@ export class ImaxOfficialScraper {
       console.log(`📅 현재 선택된 날짜: ${selectedDateText}`);
 
       // 사용 가능한 모든 날짜 수집
-      const availableDates = await this.page.locator(
-        'button.MuiPickersDay-root:not(.Mui-disabled)'
-      ).all();
+      const availableDates = await this.page
+        .locator("button.MuiPickersDay-root:not(.Mui-disabled)")
+        .all();
 
       console.log(`📅 예매 가능한 날짜: ${availableDates.length}개`);
 

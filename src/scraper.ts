@@ -120,9 +120,7 @@ export class ImaxScraper {
         } catch (error) {
           const errorMsg =
             error instanceof Error ? error.message : String(error);
-          console.error(
-            `  ❌ 날짜 처리 실패: ${errorMsg.substring(0, 50)}`
-          );
+          console.error(`  ❌ 날짜 처리 실패: ${errorMsg.substring(0, 50)}`);
         }
       }
 
